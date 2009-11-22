@@ -72,24 +72,38 @@ __END__
 Lexical::SingleAssignment - Single assignment lexical variables
 
 	{
+		# lexically scoped, like use strict
 		use Lexical::SingleAssignment;
 
+
+		# declare a lexical normally and give it a value
 		my $x = "Foo";
 
-		$x = "bar"; # compile time error, assignment after declaration
 
+		# compile time error, no initial value provided
+		my $y;
+
+
+		# compile time error, assignment after declaration
+		$x = "bar";
+
+
+		# runtime error, read only variable
 		my $ref = \$x;
-		$$ref = "bar"; # runtime error, read obnly variable
+		$$ref = "bar";
 
-		my $y; # compile time error, no initial value provided
 
 		{
 			no Lexical::SingleAssignment;
 
-			$x = "bar"; # runtime error, still readonly from parent scope
 
+			# runtime error, $x is still readonly from parent scope
+			$x = "bar";
+
+
+			# no error, module not in enabled in this scope
 			my $inner;
-			$inner = 3; # OK, single assignment pragma disabled
+			$inner = 3;
 		}
 	}
 
@@ -99,6 +113,9 @@ This module implements lexically scoped single assignment lexicals.
 
 When this module is in scope all lexical variables must be assigned a value at
 their declaration site, and cannot be modified afterwords.
+
+In other words, when this module is in effect all lexicals must be assigned to
+exactly once, whereas normally you may assign zero or more times.
 
 This is somewhat similar to immutable name bindings in other languages, but the
 SVs created are still copies (they are just readonly copies).
