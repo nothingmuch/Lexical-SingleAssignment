@@ -44,15 +44,21 @@ pp_aassign_readonly (pTHX) {
 	SV **first = &PL_stack_base[TOPMARK + 1];
 	int items = 1 + ( SP - first );
 
+	/* save pointers to all the SVs being assigned to*/
 	Newx(lvalues, items, SV *);
 	save_freepv(lvalues);
 
 	Copy(first, lvalues, items, SV *);
 
+	/* perform the assignment */
 	OP *ret = PL_ppaddr[OP_AASSIGN](aTHXR);
 
+	/* make all the values readonly, including all child elements for container
+	 * types */
 	while ( items ) {
 		SV *sv = lvalues[--items];
+
+		assert(SvPADMY(sv));
 
 		if ( SvTYPE(sv) == SVt_PVAV ) {
 			AV *av = (AV *)sv;
@@ -63,6 +69,7 @@ pp_aassign_readonly (pTHX) {
 				SvREADONLY_on(array[i]);
 			}
 		} else if ( SvTYPE(sv) == SVt_PVHV ) {
+			/* this is like Hash::Util::lock_hash */
 			HV *hv = (HV *)sv;
 			HE *he;
 			SV *val;
@@ -82,7 +89,7 @@ pp_aassign_readonly (pTHX) {
 
 
 
-/* modify sassign ops */
+
 STATIC OP *
 lsa_ck_sassign(pTHX_ OP *o, void *ud) {
 	OP *rvalue = cBINOPo->op_first;
@@ -94,16 +101,19 @@ lsa_ck_sassign(pTHX_ OP *o, void *ud) {
 			switch ( lvalue->op_type ) {
 				case OP_PADSV:
 				case OP_PADHV:
-				case OP_PADAV:	
+				case OP_PADAV:
+					/* the op for the lvalue SV is a pad op */
 					if ( lvalue->op_private & OPpLVAL_INTRO ) {
+						/* this is the first instance of the variable, where it's declared */
 						if ( o->op_ppaddr == PL_ppaddr[OP_SASSIGN] ) {
 							o->op_ppaddr = pp_sassign_readonly;
-
-							assert(MY_CXT.padop_table != NULL);
-							PTABLE_store(MY_CXT.padop_table, lvalue, NULL);
 						} else {
 							warn("Not overriding assignment op (already augmented)");
 						}
+
+						/* mark this op as accounted for, see delayed_ck_padany */
+						assert(MY_CXT.padop_table != NULL);
+						PTABLE_store(MY_CXT.padop_table, lvalue, NULL);
 					} else if ( PTABLE_fetch(MY_CXT.padop_table, lvalue) ) {
 						croak("Assignment to lexical allowed only in declaration");
 					}
@@ -146,6 +156,12 @@ lsa_ck_aassign(pTHX_ OP *o, void *ud) {
 	return o;
 }
 
+/* since the pad op is not yet ready at padany check time, SAVEDESTRUCTOR_X is
+ * used to defer a check until later
+ *
+ * if by the time delayed_ck_padany is invoked on the pad op no sassign or
+ * aassign opcheck has marked this op as accounted for in an assignment, this
+ * means the op is declaring a variable but there is no initialization. */
 STATIC void
 delayed_ck_padany(pTHX_ OP *o) {
 	assert(MY_CXT.padop_table != NULL);
@@ -156,8 +172,11 @@ delayed_ck_padany(pTHX_ OP *o) {
 		case OP_PADAV:
 			if ( o->op_private & OPpLVAL_INTRO ) {
 				if ( PTABLE_fetch(MY_CXT.padop_table, o) ) {
-					/* FIXME the table contains PL_curcup at check time, use it for a better error message */
+					/* FIXME the table contains PL_curcup at check time, use it
+					 * for a better error message */
 					if ( PL_in_eval && !(PL_in_eval & EVAL_KEEPERR) ) {
+						/* only die if we're not already dying due to some
+						 * other error */
 						croak("Declaration of lexical without assignment");
 					}
 				}
