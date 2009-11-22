@@ -194,7 +194,7 @@ STATIC OP *
 lsa_ck_padany(pTHX_ OP *o, void *ud) {
 	assert(MY_CXT.padop_table != NULL);
 
-	PTABLE_store(MY_CXT.padop_table, o, &PL_curcop);
+	PTABLE_store(MY_CXT.padop_table, (void *)o, (void *)&PL_curcop);
 	SAVEDESTRUCTOR_X(delayed_ck_padany, (void *)o);
 	return o;
 }
