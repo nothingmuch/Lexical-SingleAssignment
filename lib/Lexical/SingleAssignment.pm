@@ -28,13 +28,6 @@ sub import {
 
     on_scope_end {
         $class->teardown($hooks);
-
-		if ( defined our $error ) {
-			my $copy = $error;
-			undef $error;
-			$copy .= " (previous error: $@)\n" if $@;
-			die $copy;
-		}
     };
 
     return;
