@@ -104,7 +104,7 @@ lsa_ck_sassign(pTHX_ OP *o, void *ud) {
 						} else {
 							warn("Not overriding assignment op (already augmented)");
 						}
-					} else {
+					} else if ( PTABLE_fetch(MY_CXT.padop_table, lvalue) ) {
 						croak("Assignment to lexical allowed only in declaration");
 					}
 			}
@@ -129,7 +129,7 @@ lsa_ck_aassign(pTHX_ OP *o, void *ud) {
 					augment_readonly = TRUE;
 					assert(MY_CXT.padop_table != NULL);
 					PTABLE_store(MY_CXT.padop_table, lvalue, NULL);
-				} else {
+				} else if ( PTABLE_fetch(MY_CXT.padop_table, lvalue) ) {
 					croak("Assignment to lexical allowed only in declaration");
 				}
 		}
@@ -157,8 +157,6 @@ delayed_ck_padany(pTHX_ OP *o) {
 			if ( o->op_private & OPpLVAL_INTRO ) {
 				if ( PTABLE_fetch(MY_CXT.padop_table, o) ) {
 					/* FIXME the table contains PL_curcup at check time, use it for a better error message */
-					PTABLE_store(MY_CXT.padop_table, o, NULL);
-
 					if ( PL_in_eval && !(PL_in_eval & EVAL_KEEPERR) ) {
 						croak("Declaration of lexical without assignment");
 					}

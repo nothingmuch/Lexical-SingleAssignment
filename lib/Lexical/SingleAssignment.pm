@@ -22,15 +22,24 @@ eval {
 
 sub import {
     my ($class) = @_;
-    my $caller = caller;
 
-    my $hooks = $class->setup;
+    push our @hooks, $class->setup;
 
     on_scope_end {
-        $class->teardown($hooks);
+        $class->teardown(pop @hooks);
     };
+}
 
-    return;
+sub unimport {
+    my ($class) = @_;
+
+	if ( our @hooks ) {
+		$class->teardown(pop @hooks);
+
+		on_scope_end {
+			push @hooks, $class->setup;
+		};
+	}
 }
 
 sub setup {
