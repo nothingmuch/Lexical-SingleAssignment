@@ -2,8 +2,19 @@
 #include "perl.h"
 #include "XSUB.h"
 
+#define NEED_ptr_table_new
+#define NEED_ptr_table_fetch
+#define NEED_ptr_table_store
+#define NEED_ptr_table_free
 #include "ppport.h"
+
+#ifndef ptr_table_new
 #include "ptable.h"
+#define ptr_table_new PTABLE_new
+#define ptr_table_fetch PTABLE_fetch
+#define ptr_table_store PTABLE_store
+#define ptr_table_free PTABLE_free
+#endif
 
 
 #include "hook_op_check.h"
@@ -12,7 +23,7 @@
 #define MY_CXT_KEY "Lexical::SingleAssignment::_guts" XS_VERSION
 
 typedef struct {
-	PTABLE_t *padop_table;
+	PTR_TBL_t *padop_table;
 	int padop_table_refcount;
 } my_cxt_t;
 
@@ -113,8 +124,8 @@ lsa_ck_sassign(pTHX_ OP *o, void *ud) {
 
 						/* mark this op as accounted for, see delayed_ck_padany */
 						assert(MY_CXT.padop_table != NULL);
-						PTABLE_store(MY_CXT.padop_table, lvalue, NULL);
-					} else if ( PTABLE_fetch(MY_CXT.padop_table, lvalue) ) {
+						ptr_table_store(MY_CXT.padop_table, lvalue, NULL);
+					} else if ( ptr_table_fetch(MY_CXT.padop_table, lvalue) ) {
 						croak("Assignment to lexical allowed only in declaration");
 					}
 			}
@@ -138,8 +149,8 @@ lsa_ck_aassign(pTHX_ OP *o, void *ud) {
 				if ( lvalue->op_private & OPpLVAL_INTRO ) {
 					augment_readonly = TRUE;
 					assert(MY_CXT.padop_table != NULL);
-					PTABLE_store(MY_CXT.padop_table, lvalue, NULL);
-				} else if ( PTABLE_fetch(MY_CXT.padop_table, lvalue) ) {
+					ptr_table_store(MY_CXT.padop_table, lvalue, NULL);
+				} else if ( ptr_table_fetch(MY_CXT.padop_table, lvalue) ) {
 					croak("Assignment to lexical allowed only in declaration");
 				}
 		}
@@ -171,7 +182,7 @@ delayed_ck_padany(pTHX_ OP *o) {
 		case OP_PADHV:
 		case OP_PADAV:
 			if ( o->op_private & OPpLVAL_INTRO ) {
-				if ( PTABLE_fetch(MY_CXT.padop_table, o) ) {
+				if ( ptr_table_fetch(MY_CXT.padop_table, o) ) {
 					/* FIXME the table contains PL_curcup at check time, use it
 					 * for a better error message */
 					if ( PL_in_eval && !(PL_in_eval & EVAL_KEEPERR) ) {
@@ -186,7 +197,7 @@ delayed_ck_padany(pTHX_ OP *o) {
 
 			/* fall through */
 		default:
-			PTABLE_store(MY_CXT.padop_table, o, NULL);
+			ptr_table_store(MY_CXT.padop_table, o, NULL);
 	}
 }
 
@@ -194,7 +205,7 @@ STATIC OP *
 lsa_ck_padany(pTHX_ OP *o, void *ud) {
 	assert(MY_CXT.padop_table != NULL);
 
-	PTABLE_store(MY_CXT.padop_table, (void *)o, (void *)&PL_curcop);
+	ptr_table_store(MY_CXT.padop_table, (void *)o, (void *)&PL_curcop);
 	SAVEDESTRUCTOR_X(delayed_ck_padany, (void *)o);
 	return o;
 }
@@ -247,7 +258,7 @@ setup_padany (class)
     CODE:
 		if ( !MY_CXT.padop_table ) {
 			assert( MY_CXT.ptable_refcount == 0 );
-			MY_CXT.padop_table = PTABLE_new();
+			MY_CXT.padop_table = ptr_table_new();
 		}
 
 		MY_CXT.padop_table_refcount++;
@@ -265,7 +276,7 @@ teardown_padany (class, hook)
 		assert( MY_CXT.padop_table_refcount > 0 );
 
 		if ( MY_CXT.padop_table_refcount-- == 0 ) {
-			PTABLE_free(MY_CXT.padop_table);
+			ptr_table_free(MY_CXT.padop_table);
 			MY_CXT.padop_table = NULL;
 		}
 
