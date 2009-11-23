@@ -120,4 +120,19 @@ exactly once, whereas normally you may assign zero or more times.
 This is somewhat similar to immutable name bindings in other languages, but the
 SVs created are still copies (they are just readonly copies).
 
+=head1 VERSION CONTROL
+
+This module is maintained using git. You can get the latest version from
+L<git://github.com/nothingmuch/Lexical-SingleAssignment.git>.
+
+=head1 AUTHOR
+
+Yuval Kogman E<lt>nothingmuch@woobling.orgE<gt>
+
+=head1 COPYRIGHT
+
+	Copyright (c) 2009 Yuval Kogman. All rights reserved
+	This program is free software; you can redistribute
+	it and/or modify it under the same terms as Perl itself.
+
 =cut

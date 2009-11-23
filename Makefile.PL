@@ -16,6 +16,8 @@ requires 'B::Hooks::OP::Check';
 my $pkg = ExtUtils::Depends->new('Lexical::SingleAssignment', 'B::Hooks::OP::Check');
 makemaker_args($pkg->get_makefile_vars);
 
+repository 'git://github.com/nothingmuch/Lexical-SingleAssignment.git';
+
 ppport;
 
 WriteAll;
