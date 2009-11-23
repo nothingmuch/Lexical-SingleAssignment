@@ -8,7 +8,7 @@ use B::Hooks::OP::Check;
 use B::Hooks::EndOfScope;
 use namespace::clean;
 
-our $VERSION = "0.06";
+our $VERSION = "0.01";
 
 eval {
 	require XSLoader;
