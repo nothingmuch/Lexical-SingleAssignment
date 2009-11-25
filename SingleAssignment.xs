@@ -256,13 +256,6 @@ hook_op_check_id
 setup_padany (class)
         SV *class;
     CODE:
-		if ( !MY_CXT.padop_table ) {
-			assert( MY_CXT.ptable_refcount == 0 );
-			MY_CXT.padop_table = ptr_table_new();
-		}
-
-		MY_CXT.padop_table_refcount++;
-		assert( MY_CXT.padop_table_refcount > 0 );
 
         RETVAL = hook_op_check (OP_PADANY, lsa_ck_padany, NULL);
     OUTPUT:
@@ -272,6 +265,24 @@ void
 teardown_padany (class, hook)
         hook_op_check_id hook
     CODE:
+        (void)hook_op_check_remove (OP_PADANY, hook);
+
+
+
+void ptable_refcount_inc (class)
+		SV *class;
+	CODE:
+		if ( !MY_CXT.padop_table ) {
+			assert( MY_CXT.ptable_refcount == 0 );
+			MY_CXT.padop_table = ptr_table_new();
+		}
+
+		MY_CXT.padop_table_refcount++;
+		assert( MY_CXT.padop_table_refcount > 0 );
+
+void ptable_refcount_dec (class)
+		SV *class;
+	CODE:
 		assert( MY_CXT.padop_table != NULL );
 		assert( MY_CXT.padop_table_refcount > 0 );
 
@@ -279,6 +290,3 @@ teardown_padany (class, hook)
 			ptr_table_free(MY_CXT.padop_table);
 			MY_CXT.padop_table = NULL;
 		}
-
-        (void)hook_op_check_remove (OP_PADANY, hook);
-

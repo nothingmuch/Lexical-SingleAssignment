@@ -21,17 +21,21 @@ eval {
 };
 
 sub import {
-    my ($class) = @_;
+	my ($class) = @_;
 
-    push our @hooks, $class->setup;
+	$class->ptable_refcount_inc;
 
-    on_scope_end {
-        $class->teardown(pop @hooks);
-    };
+	push our @hooks, $class->setup;
+
+	on_scope_end {
+		$class->teardown(pop @hooks);
+
+		$class->ptable_refcount_dec;
+	};
 }
 
 sub unimport {
-    my ($class) = @_;
+	my ($class) = @_;
 
 	if ( our @hooks ) {
 		$class->teardown(pop @hooks);
